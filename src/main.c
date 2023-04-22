@@ -1,5 +1,3 @@
-
-
 #ifdef UNIT_TESTING
 #include "../test/test.h"
 #endif

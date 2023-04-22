@@ -13,6 +13,9 @@ typedef struct adjacencylist_node {
     //will store the number of neighbors
     size_t num_neighbors;
 
+    //will store the current capacity of the list (how much memory has been allocated)
+    size_t capacity;
+
     //array of pointers to all neighboring nodes
     struct adjacencylist_node** neighbors;
 
@@ -31,6 +34,21 @@ typedef struct adjacencylist {
     //stores the real size of the list (how many nodes are on it)
     size_t size;
 } adjacencyList;
+
+// bfs algorithm
+void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited);
+
+// dijkstra's algorithm
+void al_dijkstra(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited);
+
+// initializes an alist
+void al_init(adjacencyList* alist);
+
+// frees an alist
+void al_free(adjacencyList* alist);
+
+// search for vertices by value
+al_node* al_find_vertex_by_value(adjacencyList* alist, size_t value);
 
 //adds a vertex to an adjacency list
 void al_add_vertex(adjacencyList* alist, size_t value);
