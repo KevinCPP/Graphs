@@ -254,7 +254,7 @@ void al_dijkstra(adjacencyList* alist, size_t start_value, size_t* distances, bo
 
 
 
-void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited) {
+void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited, size_t* parent) {
     al_node* start = al_find_vertex_by_value(alist, start_value);
     if (!start) {
         fprintf(stderr, "Error: start vertex not found in adjacency list.\n");
@@ -262,6 +262,7 @@ void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* v
     }
 
     for (size_t i = 0; i < alist->size; i++) {
+        parent[i] = SIZE_MAX;
         distances[i] = SIZE_MAX;
         visited[i] = false;
     }
@@ -307,6 +308,7 @@ void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* v
 
             if (!visited[neighbor_index]) {
                 distances[neighbor_index] = distances[current_index] + 1;
+                parent[neighbor_index] = current_index;
                 visited[neighbor_index] = true;
                 to_visit[to_visit_count++] = neighbor;
             }
@@ -314,5 +316,54 @@ void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* v
     }
 
     free(to_visit);
+}
+
+// prim's algorithm
+//
+// Similar to Dijkstra's, but instead of updating the distances array based on the total
+// distance from the starting vertex, it updates based on edge weight between the current
+// vertex and neighboring vertex. The output is stored in the `parents` array, which
+// indicates the parent of each vertex in the MST
+void al_prim(adjacencyList* alist, size_t start_value, size_t* parents, bool* visited) {
+    al_node* start = al_find_vertex_by_value(alist, start_value);
+    if (!start) {
+        fprintf(stderr, "Error: start vertex not found in adjacency list.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    size_t distances[alist->size];
+
+    for (size_t i = 0; i < alist->size; i++) {
+        parents[i] = SIZE_MAX;
+        distances[i] = SIZE_MAX;
+        visited[i] = false;
+    }
+
+    distances[start->value] = 0;
+
+    for (size_t i = 0; i < alist->size; i++) {
+        size_t min_distance = SIZE_MAX;
+        size_t min_index = 0;
+
+        for (size_t j = 0; j < alist->size; j++) {
+            if (!visited[j] && distances[j] < min_distance) {
+                min_distance = distances[j];
+                min_index = j;
+            }
+        }
+
+        al_node* current = alist->list[min_index];
+        visited[min_index] = true;
+
+        for (size_t j = 0; j < current->num_neighbors; j++) {
+            al_node* neighbor = current->neighbors[j];
+            size_t weight = current->weights[j];
+
+            if (!visited[neighbor->value] && weight < distances[neighbor->value]) {
+                distances[neighbor->value] = weight;
+                parents[neighbor->value] = current->value;
+            }
+        }
+    }
 }
 

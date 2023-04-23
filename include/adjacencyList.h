@@ -35,8 +35,11 @@ typedef struct adjacencylist {
     size_t size;
 } adjacencyList;
 
+// prim's algorithm
+void al_prim(adjacencyList* alist, size_t start_value, size_t* parents, bool* visited);
+
 // bfs algorithm
-void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited);
+void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited, size_t* parent);
 
 // dijkstra's algorithm
 void al_dijkstra(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited);
