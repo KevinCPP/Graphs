@@ -88,7 +88,7 @@ void al_add_vertex(adjacencyList* alist, size_t value) {
         size_t new_capacity = (alist->capacity == 0) ? 1 : alist->capacity * 2;
 
         //reallocate the list
-        al_node** new_list = realloc(alist->list, new_capacity * sizeof(al_node*));
+        al_node** new_list = (al_node**)realloc(alist->list, new_capacity * sizeof(al_node*));
 
         //check to ensure that the reallocate operation was successful
         if(!new_list) {
@@ -129,8 +129,8 @@ void al_add_edge(al_node* vertex1, al_node* vertex2, size_t weight) {
     //resize vertex1's neighbors list if needed
     if(vertex1->capacity <= vertex1->num_neighbors) {
         size_t new_capacity = (vertex1->capacity == 0) ? 1 : vertex1->capacity * 2;
-        al_node** new_neighbors = realloc(vertex1->neighbors, new_capacity * sizeof(al_node*));
-        size_t* new_weights = realloc(vertex1->weights, new_capacity * sizeof(al_node*));
+        al_node** new_neighbors = (al_node**)realloc(vertex1->neighbors, new_capacity * sizeof(al_node*));
+        size_t* new_weights = (size_t*)realloc(vertex1->weights, new_capacity * sizeof(al_node*));
 
         if(!new_neighbors || !new_weights) 
             error("Error: failed to allocate memory for neighbors/weights when adding edge.\n");
@@ -143,8 +143,8 @@ void al_add_edge(al_node* vertex1, al_node* vertex2, size_t weight) {
     //resize vertex2's neighbors list if needed
     if(vertex2->capacity <= vertex2->num_neighbors) {
         size_t new_capacity = (vertex2->capacity == 0) ? 1 : vertex2->capacity * 2;
-        al_node** new_neighbors = realloc(vertex2->neighbors, new_capacity * sizeof(al_node*));
-        size_t* new_weights = realloc(vertex2->weights, new_capacity * sizeof(al_node*));
+        al_node** new_neighbors = (al_node**)realloc(vertex2->neighbors, new_capacity * sizeof(al_node*));
+        size_t* new_weights = (size_t*)realloc(vertex2->weights, new_capacity * sizeof(al_node*));
 
         if(!new_neighbors || !new_weights)
             error("Error: failed to allocate memory for neighbors/weights when adding edge.\n");
@@ -344,7 +344,7 @@ void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* v
     distances[start_index] = 0;
     visited[start_index] = true;
 
-    al_node** to_visit = malloc(alist->size * sizeof(al_node*));
+    al_node** to_visit = (al_node**)malloc(alist->size * sizeof(al_node*));
     size_t to_visit_count = 1;
     size_t current_visit_index = 0;
 
@@ -384,18 +384,13 @@ void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* v
     free(to_visit);
 }
 
-// prim's algorithm
-//
-// Similar to Dijkstra's, but instead of updating the distances array based on the total
-// distance from the starting vertex, it updates based on edge weight between the current
-// vertex and neighboring vertex. The output is stored in the `parents` array, which
-// indicates the parent of each vertex in the MST
+// prim's algorithm (not properly functioning yet)
 void al_prim(adjacencyList* alist, size_t start_value, size_t* parents) {
     priorityQueue pq;
     pq_init(&pq, alist->size);
 
-    size_t* key = malloc(alist->size * sizeof(size_t));
-    int* in_pq = malloc(alist->size * sizeof(int));
+    size_t* key = (size_t*)malloc(alist->size * sizeof(size_t));
+    int* in_pq = (int*)malloc(alist->size * sizeof(int));
 
     for (size_t i = 0; i < alist->size; i++) {
         key[i] = SIZE_MAX;
@@ -403,8 +398,9 @@ void al_prim(adjacencyList* alist, size_t start_value, size_t* parents) {
         parents[i] = SIZE_MAX;
     }
 
-    key[start_value] = 0;
-    pq_insert(&pq, start_value, 0);
+    size_t start_index = al_find_index_by_value(alist, start_value);
+    key[start_index] = 0;
+    pq_insert(&pq, start_index, 0);
 
     while (pq.size != 0) {
         size_t current = pq_extract_min(&pq);
@@ -418,7 +414,7 @@ void al_prim(adjacencyList* alist, size_t start_value, size_t* parents) {
             size_t weight = current_vertex->weights[i];
 
             if (in_pq[neighbor_index] && weight < key[neighbor_index]) {
-                parents[neighbor_index] = current;
+                parents[neighbor_index] = current_vertex->value;
                 key[neighbor_index] = weight;
                 pq_decrease_priority(&pq, neighbor_index, weight);
             }
@@ -429,5 +425,4 @@ void al_prim(adjacencyList* alist, size_t start_value, size_t* parents) {
     free(in_pq);
     pq_free(&pq);
 }
-
 

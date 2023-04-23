@@ -1,6 +1,6 @@
 # Compiler options
-CC = gcc
-CFLAGS = -g -Wall -Wextra -Wpedantic -std=c99
+CC = g++
+CFLAGS = -g -Wall -Wextra -Wpedantic -std=c++98
 
 # Directories
 SRCDIR = src
@@ -51,4 +51,9 @@ clean:
 
 # Phony targets
 .PHONY: all clean test
+
+# Additional rule to compile with gcc
+gcc: CC = gcc
+gcc: CFLAGS = -g -Wall -Wextra -Wpedantic -std=c99
+gcc: all
 

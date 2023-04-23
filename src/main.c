@@ -18,7 +18,7 @@ void print_path(adjacencyList* alist, cityInfo* ci, size_t* parent, size_t index
         return;
     }
 
-    size_t path[alist->size];
+    size_t* path = (size_t*)malloc(alist->size * sizeof(size_t));
     size_t path_length = 0;
     size_t current = index2;
 
@@ -39,9 +39,11 @@ void print_path(adjacencyList* alist, cityInfo* ci, size_t* parent, size_t index
             printf("%s ", city);
     }
     printf("\n");
+
+    free(path);
 }
 
-void distance_between(adjacencyList* alist, cityInfo* ci, char* city1, char* city2, void (*pathfinder)(adjacencyList*, size_t, size_t*, bool*, size_t*)) {
+void distance_between(adjacencyList* alist, cityInfo* ci, const char* city1, const char* city2, void (*pathfinder)(adjacencyList*, size_t, size_t*, bool*, size_t*)) {
     size_t id1 = ci_get_index(ci, city1);
     size_t id2 = ci_get_index(ci, city2);
 
@@ -65,9 +67,9 @@ void distance_between(adjacencyList* alist, cityInfo* ci, char* city1, char* cit
         return;
     }
 
-    size_t* parent = malloc(alist->size * sizeof(size_t));
-    size_t* distances = malloc(alist->size * sizeof(size_t));
-    bool* visited = malloc(alist->size * sizeof(bool));
+    size_t* parent = (size_t*)malloc(alist->size * sizeof(size_t));
+    size_t* distances = (size_t*)malloc(alist->size * sizeof(size_t));
+    bool* visited = (bool*)malloc(alist->size * sizeof(bool));
 
     pathfinder(alist, id1, distances, visited, parent);
 
@@ -97,8 +99,10 @@ int main() {
     make_vertices(&alist, &ci, "data/RomaniaVertices.txt");
     make_edges(&alist, &ci, "data/RomaniaEdges.txt");
 
-    distance_between(&alist, &ci, "Arad", "Sibiu", al_dijkstra);
-    distance_between(&alist, &ci, "Arad", "Craiova", al_dijkstra);
+    distance_between(&alist, &ci, "Arad", "Sibiu", al_bfs);
+    distance_between(&alist, &ci, "Arad", "Craiova", al_bfs);
+    distance_between(&alist, &ci, "Arad", "Bucharest", al_bfs);
+
     distance_between(&alist, &ci, "Arad", "Bucharest", al_dijkstra);
 
     return 0;
