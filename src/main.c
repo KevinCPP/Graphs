@@ -3,6 +3,7 @@
 #endif
 
 #include "../include/adjacencyList.h"
+#include "../include/parser.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,118 +12,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-
-unsigned char hashIndex = 0;
-size_t hashes[256];
-char strings[256][256];
-
-char* unhash(size_t hash);
-
-// simple hashing algorithm (djb2)
-size_t hash(char *str) {
-    size_t hash = 5381;
-    int c;
-
-    if(!unhash(hash)) {
-        strcpy(strings[hashIndex], str);
-    }
-
-    while ((c = *str++))
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-
-    // cache this string's hash so we can convert the hash back into a string later
-    if(!unhash(hash)) {
-        hashes[hashIndex] = hash;
-        hashIndex += 1;
-    }
-
-    return hash;
-}
-
-// don't judge me
-char* unhash(size_t hash) {
-    for(int i = 0; i < hashIndex; i++) {
-        if(hashes[i] == hash)
-            return strings[i];
-    }
-
-    return NULL;
-}
-
-void make_vertices(adjacencyList* alist, const char* filepath) {
-    // open the file with all of the city names
-    FILE *fp = fopen(filepath, "r");
-
-    if(!fp) {
-        fprintf(stdout, "ERROR | main.cpp:make_vertices | failed to open file (errno: %d)\n", errno);
-        exit(EXIT_FAILURE);
-    }
-
-    // read line by line, (current line will be stored in buffer)
-    char buffer[256];
-    while(fgets(buffer, 256 * sizeof(char), fp)) {
-        
-        char sanetize[256];
-        for(int i = 0; i < 256; i++) {
-            if(buffer[i] == '\r' || buffer[i] == '\n') {
-                sanetize[i] = '\0';
-                break;
-            }
-
-            sanetize[i] = buffer[i];
-        }
-
-        // add the vertex with a value equal to the string's hash.
-        // we do this to represent the cities as numbers, since I
-        // implemented alist with size_t as the value.
-        al_add_vertex(alist, hash(sanetize));
-
-        //printf("unhash test: %s\n", unhash(hash(sanetize)));
-    }
-}
-
-void make_edges(adjacencyList* alist, const char* filepath) {
-    // open the file with all of the city names
-    FILE *fp = fopen(filepath, "r");
-
-    if(!fp) {
-        fprintf(stdout, "ERROR | main.cpp:make_vertices | failed to open file (errno: %d)\n", errno);
-        exit(EXIT_FAILURE);
-    }
-
-    // read line by line, (current line will be stored in buffer)
-    char buffer[256];
-    while(fgets(buffer, 256 * sizeof(char), fp)) {
-        // tokenize the string at each comma
-        char token[3][256];
-        char* endptr;
-        size_t currentToken = 0;
-        size_t offset = 0;
-        for(size_t i = 0; i < 256; i++) {
-            if(buffer[i] == '\0' || buffer[i] == '\n' || buffer[i] == '\r'){
-                token[currentToken][i - offset] = '\0';
-                break;
-            }
-
-            if(buffer[i] == ',') {
-                token[currentToken][i - offset] = '\0';
-                currentToken++;
-                offset = i + 1;
-                continue;
-            }
-
-            token[currentToken][i - offset] = buffer[i];
-        }
-
-        al_node* vertex1 = al_find_vertex_by_value(alist, hash(token[0]));
-        al_node* vertex2 = al_find_vertex_by_value(alist, hash(token[1]));
-        size_t weight = strtol(token[2], &endptr, 10);
-
-        al_add_edge(vertex1, vertex2, weight);
-    }
-}
-
-void print_path(adjacencyList* alist, size_t* parent, size_t index1, size_t index2, const char* city1, const char* city2) {
+void print_path(adjacencyList* alist, cityInfo* ci, size_t* parent, size_t index1, size_t index2, const char* city1, const char* city2) {
     if (parent[index2] == SIZE_MAX) {
         printf("No path found between %s and %s.\n", city1, city2);
         return;
@@ -141,28 +31,28 @@ void print_path(adjacencyList* alist, size_t* parent, size_t index1, size_t inde
 
     for (size_t i = path_length - 1; i != SIZE_MAX; i--) {
         al_node* city_node = alist->list[path[i]];
-        char* unhashed = unhash(city_node->value);
+        char* city = ci_get_city(ci, city_node->value);
 
-        if(!unhashed)
+        if(!city)
             printf("%lu ", city_node->value);
         else
-            printf("%s ", unhash(city_node->value));
+            printf("%s ", city);
     }
     printf("\n");
 }
 
-void distance_between(adjacencyList* alist, char* city1, char* city2) {
-    size_t hash1 = hash(city1);
-    size_t hash2 = hash(city2);
+void distance_between(adjacencyList* alist, cityInfo* ci, char* city1, char* city2, void (*pathfinder)(adjacencyList*, size_t, size_t*, bool*, size_t*)) {
+    size_t id1 = ci_get_index(ci, city1);
+    size_t id2 = ci_get_index(ci, city2);
 
     size_t index1 = SIZE_MAX;
     size_t index2 = SIZE_MAX;
 
     for (size_t i = 0; i < alist->size; i++) {
-        if (alist->list[i]->value == hash1) {
+        if (alist->list[i]->value == id1) {
             index1 = i;
         }
-        if (alist->list[i]->value == hash2) {
+        if (alist->list[i]->value == id2) {
             index2 = i;
         }
         if (index1 != SIZE_MAX && index2 != SIZE_MAX) {
@@ -179,11 +69,11 @@ void distance_between(adjacencyList* alist, char* city1, char* city2) {
     size_t* distances = malloc(alist->size * sizeof(size_t));
     bool* visited = malloc(alist->size * sizeof(bool));
 
-    al_bfs(alist, hash1, distances, visited, parent);
+    pathfinder(alist, id1, distances, visited, parent);
 
     if (visited[index2]) {
         printf("The distance between %s and %s is %lu.\n", city1, city2, distances[index2]);
-        print_path(alist, parent, index1, index2, city1, city2);
+        print_path(alist, ci, parent, index1, index2, city1, city2);
     } else {
         printf("Could not find the distance between %s and %s.\n", city1, city2);
     }
@@ -193,8 +83,7 @@ void distance_between(adjacencyList* alist, char* city1, char* city2) {
     free(parent);
 }
 
-int main() {
-    
+int main() {    
 #ifdef UNIT_TESTING
     test();
 #endif
@@ -202,12 +91,15 @@ int main() {
     adjacencyList alist;
     al_init(&alist);
 
-    make_vertices(&alist, "data/RomaniaVertices.txt");
-    make_edges(&alist, "data/RomaniaEdges.txt");
+    cityInfo ci;
+    ci_init(&ci, 64, 256);
 
-    distance_between(&alist, "Arad", "Sibiu");
-    distance_between(&alist, "Arad", "Craiova");
-    distance_between(&alist, "Arad", "Bucharest");
+    make_vertices(&alist, &ci, "data/RomaniaVertices.txt");
+    make_edges(&alist, &ci, "data/RomaniaEdges.txt");
+
+    distance_between(&alist, &ci, "Arad", "Sibiu", al_dijkstra);
+    distance_between(&alist, &ci, "Arad", "Craiova", al_dijkstra);
+    distance_between(&alist, &ci, "Arad", "Bucharest", al_dijkstra);
 
     return 0;
 }

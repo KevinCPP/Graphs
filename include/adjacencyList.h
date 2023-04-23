@@ -36,13 +36,16 @@ typedef struct adjacencylist {
 } adjacencyList;
 
 // prim's algorithm
-void al_prim(adjacencyList* alist, size_t start_value, size_t* parents, bool* visited);
+void al_prim(adjacencyList* alist, size_t start_value, size_t* parents);
 
 // bfs algorithm
 void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited, size_t* parent);
 
-// dijkstra's algorithm
-void al_dijkstra(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited);
+// dijkstra's algorithm implemented using priority queue
+void al_dijkstra(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited, size_t* previous);
+
+// dijkstra's algorithm implemented without priority queue
+void al_dijkstra_slow(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited);
 
 // initializes an alist
 void al_init(adjacencyList* alist);
@@ -52,6 +55,9 @@ void al_free(adjacencyList* alist);
 
 // search for vertices by value
 al_node* al_find_vertex_by_value(adjacencyList* alist, size_t value);
+
+// search for index by value
+size_t al_find_index_by_value(adjacencyList* alist, size_t value);
 
 //adds a vertex to an adjacency list
 void al_add_vertex(adjacencyList* alist, size_t value);

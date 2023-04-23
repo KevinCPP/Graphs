@@ -1,4 +1,5 @@
 #include "../include/adjacencyList.h"
+#include "../include/priorityQueue.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -46,6 +47,16 @@ void al_free(adjacencyList* alist) {
     }
 
     free(alist->list);
+}
+
+// find indices by value
+size_t al_find_index_by_value(adjacencyList* alist, size_t value) {
+    for (size_t i = 0; i < alist->size; ++i) {
+        if (alist->list[i]->value == value) {
+            return i;
+        }
+    }
+    return SIZE_MAX;
 }
 
 // find vertices by value
@@ -194,8 +205,63 @@ bool al_contains(const adjacencyList* alist, const al_node* vertex) {
     return false;
 }
 
-// dijkstra's
-void al_dijkstra(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited) {
+void al_dijkstra(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited, size_t* previous) {
+    if (alist == NULL || distances == NULL || previous == NULL) {
+        return;
+    }
+
+    size_t num_vertices = alist->size;
+
+    size_t start_index = al_find_index_by_value(alist, start_value);
+    if(start_index == SIZE_MAX) {
+        fprintf(stderr, "Error: start vertex not found in adjacency list.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialize the priority queue and visited array
+    priorityQueue pq;
+    pq_init(&pq, num_vertices);
+    for (size_t i = 0; i < num_vertices; ++i) {
+        distances[i] = SIZE_MAX;
+        previous[i] = SIZE_MAX;
+        visited[i] = false;
+    }
+
+    // Set the starting vertex's distance to 0 and add it to the queue
+    distances[start_index] = 0;
+    pq_insert(&pq, start_index, 0);
+
+    // Process vertices from the queue until it's empty
+    while (pq.size != 0) {
+        size_t current_index = pq_extract_min(&pq);
+        if (visited[current_index]) {
+            continue;
+        }
+
+        visited[current_index] = true;
+        al_node* current = alist->list[current_index];
+
+        for (size_t i = 0; i < current->num_neighbors; ++i) {
+            al_node* neighbor = current->neighbors[i];
+            size_t weight = current->weights[i];
+            size_t neighbor_index = al_find_index_by_value(alist, neighbor->value);
+
+            if (!visited[neighbor_index]) {
+                size_t alt_distance = distances[current_index] + weight;
+                if (alt_distance < distances[neighbor_index]) {
+                    distances[neighbor_index] = alt_distance;
+                    previous[neighbor_index] = current_index;
+                    pq_insert(&pq, neighbor_index, alt_distance);
+                }
+            }
+        }
+    }
+
+    pq_free(&pq);
+}
+
+// dijkstra's (without prio queue)
+void al_dijkstra_slow(adjacencyList* alist, size_t start_value, size_t* distances, bool* visited) {
     al_node* start = al_find_vertex_by_value(alist, start_value);
     if(!start) {
         fprintf(stderr, "Error: start vertex not found in adjacency list.\n");
@@ -324,46 +390,44 @@ void al_bfs(adjacencyList* alist, size_t start_value, size_t* distances, bool* v
 // distance from the starting vertex, it updates based on edge weight between the current
 // vertex and neighboring vertex. The output is stored in the `parents` array, which
 // indicates the parent of each vertex in the MST
-void al_prim(adjacencyList* alist, size_t start_value, size_t* parents, bool* visited) {
-    al_node* start = al_find_vertex_by_value(alist, start_value);
-    if (!start) {
-        fprintf(stderr, "Error: start vertex not found in adjacency list.\n");
-        exit(EXIT_FAILURE);
-    }
+void al_prim(adjacencyList* alist, size_t start_value, size_t* parents) {
+    priorityQueue pq;
+    pq_init(&pq, alist->size);
 
-    size_t distances[alist->size];
+    size_t* key = malloc(alist->size * sizeof(size_t));
+    int* in_pq = malloc(alist->size * sizeof(int));
 
     for (size_t i = 0; i < alist->size; i++) {
+        key[i] = SIZE_MAX;
+        in_pq[i] = 1;
         parents[i] = SIZE_MAX;
-        distances[i] = SIZE_MAX;
-        visited[i] = false;
     }
 
-    distances[start->value] = 0;
+    key[start_value] = 0;
+    pq_insert(&pq, start_value, 0);
 
-    for (size_t i = 0; i < alist->size; i++) {
-        size_t min_distance = SIZE_MAX;
-        size_t min_index = 0;
+    while (pq.size != 0) {
+        size_t current = pq_extract_min(&pq);
+        in_pq[current] = 0;
 
-        for (size_t j = 0; j < alist->size; j++) {
-            if (!visited[j] && distances[j] < min_distance) {
-                min_distance = distances[j];
-                min_index = j;
-            }
-        }
+        al_node* current_vertex = alist->list[current];
 
-        al_node* current = alist->list[min_index];
-        visited[min_index] = true;
+        for (size_t i = 0; i < current_vertex->num_neighbors; i++) {
+            al_node* neighbor = current_vertex->neighbors[i];
+            size_t neighbor_index = al_find_index_by_value(alist, neighbor->value);
+            size_t weight = current_vertex->weights[i];
 
-        for (size_t j = 0; j < current->num_neighbors; j++) {
-            al_node* neighbor = current->neighbors[j];
-            size_t weight = current->weights[j];
-
-            if (!visited[neighbor->value] && weight < distances[neighbor->value]) {
-                distances[neighbor->value] = weight;
-                parents[neighbor->value] = current->value;
+            if (in_pq[neighbor_index] && weight < key[neighbor_index]) {
+                parents[neighbor_index] = current;
+                key[neighbor_index] = weight;
+                pq_decrease_priority(&pq, neighbor_index, weight);
             }
         }
     }
+
+    free(key);
+    free(in_pq);
+    pq_free(&pq);
 }
+
 
